@@ -907,3 +907,12 @@ cp1 VM에 어댑터2 붙인 뒤, cp1에서 ip -br a 출력 한 줄만 보내주�
 그리고 Windows에서 ping 192.168.56.10 결과도 알려주세요.
 
 그 두 개가 OK면, 제가 당신 환경 기준으로 **정확한 인터페이스 이름(enp0s8 맞는지)**까지 포함해서 “완전 복붙” 최종 커맨드로 마무리해드릴게요.
+
+
+#############################
+![alt text](image.png)
+
+https://releases.ubuntu.com/jammy/
+![alt text](image-1.png)
+
+![alt text](image-2.png)
