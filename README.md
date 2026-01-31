@@ -318,8 +318,10 @@ k8s    = 컨테이너를 대규모로 운영하는 오케스트레이션 플랫�
 - **K3s 멀티노드 설치 가이드**: `2. k3s_multinode_hostonly_guide.md`
 - **SSH 접속 메모**: `3. ssh.md`
 - **SSH 접속/트러블슈팅 가이드**: `3. ssh_access_troubleshooting_guide.md`
+
 - **Ingress/대시보드 구성 메모**: `4. dashboard.md`
 - **Ingress + Metrics Server + Dashboard 가이드**: `4. k3s_ingress_metrics_dashboard_guide.md`
+
 - **대시보드 재접속/포트포워딩 문제 해결**: `5. dashboard_reconnect_portforward_guide.md`
 - **재부팅 후 대시보드 재접속 메모**: `5. re-connect.md`
 - **HPA 오토스케일 실습**: `6. AutoScaleUp_Test.md`
