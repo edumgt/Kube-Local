@@ -1,0 +1,422 @@
+# Ingress + Metrics Server + Kubernetes Dashboard (요약)
+
+> 통합본: `4. dashboard.md` + `4. k3s_ingress_metrics_dashboard_guide.md`
+
+## 기존 문서 1
+
+> 목표: K3s 환경에서 Ingress, Metrics Server, Dashboard까지 빠르게 구성하고 접속합니다.
+
+---
+
+## 1) 현재 상태 확인 (cp1)
+
+```sh
+kubectl get nodes -o wide
+kubectl -n kube-system get deploy,svc | egrep "traefik|metrics" || true
+kubectl -n kube-system get svc traefik -o wide
+```
+
+---
+
+## 2) Ingress 실습 (whoami)
+
+### 2-1) 테스트 앱 배포
+
+```sh
+kubectl create deploy whoami --image=traefik/whoami
+kubectl expose deploy whoami --port 80
+kubectl get pod -o wide
+```
+
+### 2-2) Ingress 생성
+
+`ing-whoami.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: whoami-ing
+spec:
+  rules:
+  - host: whoami.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: whoami
+            port:
+              number: 80
+```
+
+적용:
+
+```sh
+kubectl apply -f ing-whoami.yaml
+kubectl get ingress
+```
+
+### 2-3) Windows hosts 설정
+
+`C:\Windows\System32\drivers\etc\hosts`에 추가:
+
+```text
+192.168.56.10  whoami.local
+```
+
+브라우저: <http://whoami.local/>
+
+---
+
+## 3) Metrics Server 확인
+
+```sh
+kubectl top nodes
+kubectl top pods -A | head
+```
+
+`metrics not available`라면:
+
+```sh
+kubectl -n kube-system get deploy metrics-server
+kubectl -n kube-system logs deploy/metrics-server --tail=50
+```
+
+(최후수단) upstream 설치:
+
+```sh
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+---
+
+## 4) Kubernetes Dashboard 설치 (Helm)
+
+```
+https://github.com/kubernetes-retired/dashboard
+```
+
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm repo update
+
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard \
+  --create-namespace --namespace kubernetes-dashboard
+```
+
+---
+### repo 주소 변경으로 다른 대시보드 다운 로드 가능
+```
+kubectl get pods -n kube-system -l app.kubernetes.io/name=headlamp
+kubectl get svc -n kube-system headlamp -o wide
+kubectl get endpoints -n kube-system headlamp -o wide
+curl -I http://127.0.0.1:8080
+```
+---
+### 원본 대시보드 주소
+```
+https://github.com/kubernetes-retired/dashboard
+```
+
+```
+git clone https://github.com/kubernetes-retired/dashboard.git
+cd dashboard
+
+helm upgrade --install kubernetes-dashboard ./charts/kubernetes-dashboard \
+  --create-namespace \
+  --namespace kubernetes-dashboard
+```
+
+
+
+```
+kubectl create token headlamp --namespace kube-system
+```
+
+
+### 4-1) Helm이 localhost:8080으로 실패할 때
+
+```text
+Get "http://localhost:8080/version": connect: connection refused
+```
+
+kubeconfig를 지정합니다:
+
+```sh
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+```
+
+---
+
+## 5) Dashboard 접속 (port-forward)
+
+cp1에서 실행:
+
+```sh
+kubectl -n kubernetes-dashboard port-forward \
+  svc/kubernetes-dashboard-kong-proxy 8443:443 \
+  --address 0.0.0.0
+```
+---
+### 백그라운드에서 실행
+```
+nohup kubectl -n kubernetes-dashboard port-forward \
+  svc/kubernetes-dashboard-kong-proxy 8443:443 \
+  --address 0.0.0.0 \
+  > ~/k8s-dashboard-portforward.log 2>&1 &
+```
+
+Windows 브라우저: <https://192.168.56.10:8443>
+
+![Kubernetes Dashboard 로그인 화면](image-8.png)
+
+---
+
+## 6) 로그인 토큰 생성
+
+```sh
+kubectl -n kubernetes-dashboard create token admin-user
+```
+
+> `admin-user`가 없다면 별도 ServiceAccount/ClusterRoleBinding을 생성해야 합니다.
+
+![Dashboard 로그인 토큰 생성 예시](image-9.png)
+
+## 7) 접속 후 화면 예시
+
+![Kubernetes Dashboard 워크로드 화면](image-3.png)
+
+
+## 부연설명
+### https://chatgpt.com/share/69719b43-f6c8-8007-a762-70ae06b7a4c1
+---
+
+## 기존 문서 2
+
+> 목표: K3s 멀티노드(또는 단일노드) 환경에서
+> 1) **Ingress(라우팅)**, 2) **Metrics Server(top)**, 3) **Kubernetes Dashboard(웹 UI)**를 구성하고 접속합니다.
+
+- 날짜: 2026-01-10
+- 환경 전제: K3s, 기본 Traefik(대개 내장/Helm) 사용
+
+---
+
+## 0) 현재 상태 확인 (cp1)
+
+```sh
+kubectl get nodes -o wide
+kubectl -n kube-system get deploy,svc | egrep "traefik|metrics" || true
+kubectl -n kube-system get svc traefik -o wide
+```
+
+Traefik 서비스의 노출 방식(포트/EXTERNAL-IP)을 먼저 확인합니다.
+
+---
+
+## 1) Ingress 실습 (Traefik 기본 사용)
+
+### 1-1) 테스트 앱(whoami) 배포
+
+```sh
+kubectl create deploy whoami --image=traefik/whoami
+kubectl expose deploy whoami --port 80
+kubectl get pod -o wide
+kubectl get svc whoami
+```
+
+### 1-2) Ingress 생성 (host 기반 라우팅)
+
+`ing-whoami.yaml`:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: whoami-ing
+spec:
+  rules:
+  - host: whoami.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: whoami
+            port:
+              number: 80
+```
+
+적용:
+```sh
+kubectl apply -f ing-whoami.yaml
+kubectl get ingress
+```
+
+### 1-3) Windows hosts 파일에 도메인 매핑
+
+Windows(관리자 권한)에서 파일 편집:
+- `C:\Windows\System32\drivers\etc\hosts`
+
+맨 아래 추가:
+```text
+192.168.56.10  whoami.local
+```
+
+브라우저:
+- `http://whoami.local/`
+
+> 안 열리면 우선 Traefik 서비스가 80으로 노출되는지, 포트 충돌(호스트 80 사용 중) 여부를 확인하세요.
+
+---
+
+## 2) Metrics Server 확인 & 사용
+
+### 2-1) top 명령 (metrics-server 필요)
+
+```sh
+kubectl top nodes
+kubectl top pods -A | head
+```
+
+### 2-2) metrics not available 대응
+
+metrics-server 배포/로그 확인:
+```sh
+kubectl -n kube-system get deploy metrics-server
+kubectl -n kube-system logs deploy/metrics-server --tail=50
+```
+
+(최후수단) upstream metrics-server 설치:
+```sh
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+> K3s 패키지 매니페스트는 재기동 시 덮어씌워질 수 있으니, “패키지 disable + 별도 설치” 전략이 필요할 수 있습니다.
+
+---
+
+## 3) Kubernetes Dashboard 설치 (Helm 표준)
+
+### 3-1) Helm 설치 (cp1)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+helm version
+```
+
+### 3-2) Dashboard 설치
+
+```sh
+helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+helm repo update
+
+helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard   --create-namespace --namespace kubernetes-dashboard
+```
+
+---
+
+## 4) Helm이 “localhost:8080 접속” 하며 실패할 때(중요)
+
+에러 형태:
+```text
+Get "http://localhost:8080/version": connect: connection refused
+```
+
+의미: Helm이 **kubeconfig를 못 찾아** 기본값 localhost:8080으로 접속한 것.
+
+해결(즉시 적용):
+```sh
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+helm ls -A
+```
+
+영구 적용(추천):
+```sh
+echo 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml' >> ~/.bashrc
+source ~/.bashrc
+```
+
+권한 문제 시(읽기 권한이 없을 때) 홈으로 복사:
+```sh
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $USER:$USER ~/.kube/config
+chmod 600 ~/.kube/config
+unset KUBECONFIG
+kubectl get nodes
+```
+
+---
+
+## 5) Dashboard 접속(Port-forward)
+
+### 옵션 A) cp1에서 외부 접근 가능하게 직접 바인딩(학습용)
+
+```sh
+kubectl -n kubernetes-dashboard port-forward   svc/kubernetes-dashboard-kong-proxy 8443:443   --address 0.0.0.0
+```
+
+Windows 브라우저:
+- `https://192.168.56.10:8443`
+
+> 브라우저 인증서 경고는 “고급 → 계속”으로 진행(자체 서명 인증서).
+
+![Kubernetes Dashboard 접속 화면 예시](image-10.png)
+
+### 옵션 B) SSH 터널(추천: 외부로 0.0.0.0 열지 않음)
+
+Windows PowerShell:
+```powershell
+ssh -L 8443:localhost:8443 ubuntu@192.168.56.10
+```
+
+cp1(SSH 접속 세션)에서:
+```sh
+kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 8443:443
+```
+
+Windows 브라우저:
+- `https://localhost:8443`
+
+---
+
+## 6) “address already in use” 포트 충돌 해결
+
+에러:
+```text
+bind: address already in use
+```
+
+의미: 이미 다른 프로세스가 8443을 점유 중(SSH -L, 기존 port-forward 등)
+
+해결 2가지:
+
+### 6-1) 포트 바꾸기(가장 빠름)
+
+cp1:
+```sh
+kubectl -n kubernetes-dashboard port-forward svc/kubernetes-dashboard-kong-proxy 9443:443
+```
+
+(SSH 터널도 포트를 맞춰야 함)
+```powershell
+ssh -L 9443:localhost:9443 ubuntu@192.168.56.10
+```
+
+브라우저:
+- `https://localhost:9443` 또는 `https://192.168.56.10:9443`
+
+### 6-2) 누가 점유 중인지 확인 후 종료
+
+cp1:
+```sh
+sudo ss -lntp | grep ':8443' || echo "no listener on 8443"
+```
+
+PID 확인 후:
+```sh
+sudo kill <PID>

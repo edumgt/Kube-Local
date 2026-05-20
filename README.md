@@ -114,26 +114,29 @@ kubectl get ns lecture            # lecture 네임스페이스
 ---
 
 ## 학습 동선
-- 통합 강의 폴더: `lecture01` ~ `lecture15`
-- 각 강의는 해당 폴더의 `README.md`를 기준으로 진행
-- 이론/실습 자료와 이미지가 lecture 폴더별로 함께 정리됨
+- 번호 순서대로 폴더를 진행합니다: `00-Docker-Images` → `14-Reference-Cheatsheets`
+- 각 폴더의 `README.md`에 강의 목표·이론·실습 명령어가 통합되어 있습니다
+- `kube-manifests/` 하위 폴더에 YAML 실습 파일이 포함되어 있습니다
 
 ## 강의 구성
-- `lecture01`: 환경 구축과 Docker 이미지 준비
-- `lecture02`: Kubernetes Architecture
-- `lecture03`: Pods with kubectl
-- `lecture04`: ReplicaSets with kubectl
-- `lecture05`: Deployments with kubectl
-- `lecture06`: Services with kubectl
-- `lecture07`: YAML Basics와 Manifest
-- `lecture08`: Pods with YAML와 Probe 안정성
-- `lecture09`: ReplicaSets with YAML
-- `lecture10`: Deployments with YAML
-- `lecture11`: Services with YAML
-- `lecture12`: Dashboard와 Observability
-- `lecture13`: Auto Scaling (HPA)
-- `lecture14`: Network, Ingress, Troubleshooting
-- `lecture15`: Reference and Review
+
+| 폴더 | 주제 |
+|------|------|
+| [`00-Docker-Images/`](./00-Docker-Images/) | 환경 구축과 Docker 이미지 준비 |
+| [`01-Kubernetes-Architecture/`](./01-Kubernetes-Architecture/) | Kubernetes Architecture |
+| [`02-PODs-with-kubectl/`](./02-PODs-with-kubectl/) | Pods with kubectl |
+| [`03-ReplicaSets-with-kubectl/`](./03-ReplicaSets-with-kubectl/) | ReplicaSets with kubectl |
+| [`04-Deployments-with-kubectl/`](./04-Deployments-with-kubectl/) | Deployments with kubectl |
+| [`05-Services-with-kubectl/`](./05-Services-with-kubectl/) | Services with kubectl |
+| [`06-YAML-Basics/`](./06-YAML-Basics/) | YAML Basics |
+| [`07-PODs-with-YAML/`](./07-PODs-with-YAML/) | Pods with YAML |
+| [`08-ReplicaSets-with-YAML/`](./08-ReplicaSets-with-YAML/) | ReplicaSets with YAML |
+| [`09-Deployments-with-YAML/`](./09-Deployments-with-YAML/) | Deployments with YAML |
+| [`10-Services-with-YAML/`](./10-Services-with-YAML/) | Services with YAML |
+| [`11-Dashboard-Observability/`](./11-Dashboard-Observability/) | Dashboard와 Observability |
+| [`12-HPA-AutoScaling/`](./12-HPA-AutoScaling/) | Auto Scaling (HPA) |
+| [`13-Network-Ingress-Troubleshooting/`](./13-Network-Ingress-Troubleshooting/) | Network, Ingress, Troubleshooting |
+| [`14-Reference-Cheatsheets/`](./14-Reference-Cheatsheets/) | Reference & Cheatsheets |
 
 ## 핵심 개념 요약
 
@@ -218,7 +221,7 @@ kubectl get ns lecture
 ```
 
 ## 활용 방법
-1. `lecture01`부터 `lecture15` 순서로 진행합니다.
-2. 각 lecture의 `README.md`에서 목표/순서를 먼저 확인합니다.
-3. 실습 중 막히면 해당 lecture의 트러블슈팅 섹션부터 확인합니다.
-4. 최종 복습은 `lecture15`의 치트시트/용어집/샌드박스로 마무리합니다.
+1. `00-Docker-Images`부터 `14-Reference-Cheatsheets` 순서로 진행합니다.
+2. 각 폴더의 `README.md`에서 강의 목표와 권장 순서를 먼저 확인합니다.
+3. 실습 중 막히면 `13-Network-Ingress-Troubleshooting`의 트러블슈팅 섹션을 참고합니다.
+4. 최종 복습은 `14-Reference-Cheatsheets`의 치트시트/용어집/샌드박스로 마무리합니다.

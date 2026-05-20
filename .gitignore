@@ -1,2 +1,3 @@
 *.zip
 aws
+.codex/
