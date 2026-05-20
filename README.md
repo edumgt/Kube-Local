@@ -2,47 +2,17 @@
 
 ## 실습 환경 선택
 
-이 저장소는 다음 세 가지 환경에서 실습할 수 있도록 구성되어 있습니다.
+이 저장소의 기본 실습 환경은 **VMware**이며, VirtualBox/Codespaces는 대안으로 사용할 수 있습니다.
 
 | 환경 | 폴더 / 방법 | 권장 사양 |
 |------|------------|-----------|
-| **VirtualBox** (로컬 VM) | [`virtualbox/`](./virtualbox/) | RAM 8GB+, 4코어+ |
-| **VMware** (로컬 VM) | [`vmware/`](./vmware/) | RAM 8GB+, 4코어+ |
-| **GitHub Codespaces** (클라우드) | 이 저장소 → Code → Codespaces | 4 CPU / 16GB (자동 구성) |
+| **VMware** (로컬 VM, 권장) | [`vmware/`](./vmware/) | RAM 8GB+, 4코어+ |
+| VirtualBox (로컬 VM, 대안) | [`virtualbox/`](./virtualbox/) | RAM 8GB+, 4코어+ |
+| GitHub Codespaces (클라우드, 대안) | 이 저장소 → Code → Codespaces | 4 CPU / 16GB (자동 구성) |
 
 ---
 
-## VirtualBox 다운로드 및 설치
-
-[![VirtualBox](https://img.shields.io/badge/Oracle_VirtualBox-Download-183A61?logo=virtualbox&logoColor=white&style=for-the-badge)](https://www.virtualbox.org/wiki/Downloads)
-
-> **공식 다운로드**: https://www.virtualbox.org/wiki/Downloads
-
-```
-[설치 단계 요약]
-
-① OS 에 맞는 패키지 다운로드 (Windows .exe / macOS .dmg / Linux .deb/.rpm)
-       ↓
-② 설치 마법사 실행 (관리자/sudo 권한 필요)
-       ↓
-③ Extension Pack 설치 (USB 3.0, RDP 지원용)
-   → 같은 페이지의 "VirtualBox Extension Pack" 다운로드 후 설치
-       ↓
-④ 설치 확인: VBoxManage --version
-```
-
-| OS | 직접 다운로드 |
-|----|--------------|
-| Windows 10/11 | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-Win.exe |
-| macOS Intel | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-OSX.dmg |
-| macOS Apple Silicon | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-macOSArm64.dmg |
-| Ubuntu 24.04 | https://download.virtualbox.org/virtualbox/7.1.4/virtualbox-7.1_7.1.4-165100~Ubuntu~noble_amd64.deb |
-
-→ VirtualBox 상세 K8s 설정: **[`virtualbox/README.md`](./virtualbox/README.md)**
-
----
-
-## VMware 다운로드 및 설치
+## VMware 다운로드 및 설치 (권장)
 
 [![VMware Workstation](https://img.shields.io/badge/VMware_Workstation_Pro-Download-607078?logo=vmware&logoColor=white&style=for-the-badge)](https://support.broadcom.com/group/ecx/productdownloads?subfamily=VMware+Workstation+Pro)
 [![VMware Fusion](https://img.shields.io/badge/VMware_Fusion_Pro-macOS-607078?logo=vmware&logoColor=white&style=for-the-badge)](https://support.broadcom.com/group/ecx/productdownloads?subfamily=VMware+Fusion)
@@ -73,7 +43,37 @@
 
 ---
 
-## GitHub Codespaces 실습 (4 CPU / 16 GB)
+## VirtualBox 다운로드 및 설치 (대안)
+
+[![VirtualBox](https://img.shields.io/badge/Oracle_VirtualBox-Download-183A61?logo=virtualbox&logoColor=white&style=for-the-badge)](https://www.virtualbox.org/wiki/Downloads)
+
+> **공식 다운로드**: https://www.virtualbox.org/wiki/Downloads
+
+```
+[설치 단계 요약]
+
+① OS 에 맞는 패키지 다운로드 (Windows .exe / macOS .dmg / Linux .deb/.rpm)
+       ↓
+② 설치 마법사 실행 (관리자/sudo 권한 필요)
+       ↓
+③ Extension Pack 설치 (USB 3.0, RDP 지원용)
+   → 같은 페이지의 "VirtualBox Extension Pack" 다운로드 후 설치
+       ↓
+④ 설치 확인: VBoxManage --version
+```
+
+| OS | 직접 다운로드 |
+|----|--------------|
+| Windows 10/11 | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-Win.exe |
+| macOS Intel | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-OSX.dmg |
+| macOS Apple Silicon | https://download.virtualbox.org/virtualbox/7.1.4/VirtualBox-7.1.4-165100-macOSArm64.dmg |
+| Ubuntu 24.04 | https://download.virtualbox.org/virtualbox/7.1.4/virtualbox-7.1_7.1.4-165100~Ubuntu~noble_amd64.deb |
+
+→ VirtualBox 상세 K8s 설정: **[`virtualbox/README.md`](./virtualbox/README.md)**
+
+---
+
+## GitHub Codespaces 실습 (대안, 4 CPU / 16 GB)
 
 이 저장소는 GitHub Codespaces 에서 **4 CPU / 16 GB** 머신으로  
 Kubernetes Control Plane 단일 노드를 자동 구성합니다.
