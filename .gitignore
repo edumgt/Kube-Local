@@ -1,4 +1,5 @@
 *.zip
 aws
-.codex/
+.codex
+.claude/
 **/target
