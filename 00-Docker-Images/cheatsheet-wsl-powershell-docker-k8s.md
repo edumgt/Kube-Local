@@ -470,7 +470,7 @@ docker system prune -a
 
 ```sh
 kubectl version --client
-kubectl config get-contexts
+kubectl config get-s
 kubectl config current-context
 kubectl cluster-info
 ```

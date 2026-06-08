@@ -1,6 +1,6 @@
-# Kubernetes API 설치 가이드 (192.168.253.146)
+# Kubernetes API 설치 가이드 (192.168.253.149)
 
-> 대상 서버: `ssh ubuntu@192.168.253.146`  
+> 대상 서버: `ssh ubuntu@192.168.253.149`  
 > 배포판: k3s (경량 Kubernetes)  
 > OS: Ubuntu 22.04 LTS
 
@@ -11,7 +11,7 @@
 ### 0-1) SSH 접속 확인
 
 ```sh
-ssh ubuntu@192.168.253.146
+ssh ubuntu@192.168.253.149
 ```
 
 초기 접속 시 fingerprint 확인이 나오면 `yes` 입력.
@@ -92,7 +92,7 @@ Windows/WSL 등 **외부 PC에서 접속**하려면 실제 VM IP로 변경해야
 ### 3-1) kubeconfig 서버 주소 수정 (서버에서)
 
 ```sh
-sed -i 's#https://127.0.0.1:6443#https://192.168.253.146:6443#g' ~/.kube/config
+sed -i 's#https://127.0.0.1:6443#https://192.168.253.149:6443#g' ~/.kube/config
 ```
 
 ### 3-2) 수정 내용 확인
@@ -103,7 +103,7 @@ kubectl config view --minify
 
 `server:` 항목이 아래처럼 바뀌면 정상:
 ```yaml
-server: https://192.168.253.146:6443
+server: https://192.168.253.149:6443
 ```
 
 ### 3-3) 방화벽 6443 포트 허용 (UFW 활성화된 경우)
@@ -129,12 +129,12 @@ cat ~/.kube/config
 
 ```sh
 # Windows PowerShell에서 실행
-scp ubuntu@192.168.253.146:~/.kube/config $env:USERPROFILE\.kube\config
+scp ubuntu@192.168.253.149:~/.kube/config $env:USERPROFILE\.kube\config
 ```
 
 ```sh
 # WSL / Linux에서 실행
-scp ubuntu@192.168.253.146:~/.kube/config ~/.kube/config
+scp ubuntu@192.168.253.149:~/.kube/config ~/.kube/config
 chmod 600 ~/.kube/config
 ```
 
@@ -147,7 +147,7 @@ kubectl cluster-info
 
 정상 예시:
 ```text
-Kubernetes control plane is running at https://192.168.253.146:6443
+Kubernetes control plane is running at https://192.168.253.149:6443
 ```
 
 ---
@@ -174,7 +174,7 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 Worker 노드에서 실행 (토큰과 Control Plane IP 대입):
 
 ```sh
-curl -sfL https://get.k3s.io | K3S_URL=https://192.168.253.146:6443 K3S_TOKEN=<토큰> sh -
+curl -sfL https://get.k3s.io | K3S_URL=https://192.168.253.149:6443 K3S_TOKEN=<토큰> sh -
 ```
 
 조인 확인:
@@ -205,10 +205,10 @@ kubectl cluster-info
 
 ## 빠른 체크리스트
 
-- [ ] `ssh ubuntu@192.168.253.146` 접속 성공
+- [ ] `ssh ubuntu@192.168.253.149` 접속 성공
 - [ ] `sudo systemctl status k3s` → Active: running
 - [ ] `kubectl get nodes` → Ready 상태
-- [ ] `kubectl config view --minify` → `server: https://192.168.253.146:6443`
+- [ ] `kubectl config view --minify` → `server: https://192.168.253.149:6443`
 - [ ] 6443 포트 접근 가능 확인
 
 ---

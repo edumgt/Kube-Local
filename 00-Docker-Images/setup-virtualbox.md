@@ -572,10 +572,10 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 sudo apt update && sudo apt install -y curl
 
 curl -sfL https://get.k3s.io | \
-  K3S_URL="https://192.168.56.10:6443" \
-  K3S_TOKEN="K107dfd07309e3133b797bbcfb593ff72e8914933602a81f409140dc80682c91bef::server:8020a384dc6428dd8b834dbe41ee33c4" sh -s - \
-  --node-ip 192.168.56.11 \
-  --flannel-iface enp0s8
+  K3S_URL="https://192.168.253.149:6443" \
+  K3S_TOKEN="K109d49621f96b8d96ac63f14c1b3c52bb4e6cd419e907a5bef632967d38f96a099::server:73df24b363edcbdf7013632b340a0f3a" sh -s - \
+  --node-ip 192.168.253.148 \
+  --flannel-iface ens33
 ```
 
 w2는 `--node-ip 192.168.56.12`로 변경합니다.
