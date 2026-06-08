@@ -7,7 +7,6 @@
 | 환경 | 폴더 / 방법 | 권장 사양 |
 |------|------------|-----------|
 | **VMware** (로컬 VM, 권장) | [`vmware/`](./vmware/) | RAM 8GB+, 4코어+ |
-| VirtualBox (로컬 VM, 대안) | [`virtualbox/`](./virtualbox/) | RAM 8GB+, 4코어+ |
 | GitHub Codespaces (클라우드, 대안) | 이 저장소 → Code → Codespaces | 4 CPU / 16GB (자동 구성) |
 
 ---
