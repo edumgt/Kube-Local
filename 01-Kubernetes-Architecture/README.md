@@ -355,3 +355,43 @@ kubectl describe node <노드명>
 
 요약하자면
 "도커가 하나의 **고래(컨테이너)**라면, 쿠버네티스는 그 고래들이 무리 지어(Pod) 유기적으로 움직이게 관리하는 시스템이다"라는 위트 있는 비유에서 탄생한 이름입니다.
+
+
+---
+
+```bash
+helm repo add headlamp https://kubernetes-sigs.github.io/headlamp/
+helm repo update
+
+# 설치
+helm install headlamp headlamp/headlamp \
+  --namespace headlamp \
+  --create-namespace \
+  --set service.type=NodePort \
+  --set service.nodePort=30080
+```
+
+---
+```
+ubuntu@controller-node:~$ helm install headlamp headlamp/headlamp \
+  --namespace headlamp \
+  --create-namespace \
+  --set service.type=NodePort \
+  --set service.nodePort=30080
+NAME: headlamp
+LAST DEPLOYED: Tue Jun  9 05:02:34 2026
+NAMESPACE: headlamp
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+1. Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace headlamp -o jsonpath="{.spec.ports[0].nodePort}" services headlamp)
+  export NODE_IP=$(kubectl get nodes --namespace headlamp -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+2. Get the token using
+  kubectl create token headlamp --namespace headlamp
+```
+
+---
+### 영문 사이트 아닐 경우 - ?lng=en

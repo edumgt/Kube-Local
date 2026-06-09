@@ -190,3 +190,7 @@ sudo journalctl -u k3s -n 300 --no-pager
 - **삭제 이력 추적**: Events(짧음) → Audit Log(있으면 확실) → k3s/journalctl → 외부 로그/메트릭
 
 ---
+
+
+![alt text](image-1.png)
+
