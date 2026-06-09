@@ -15,9 +15,10 @@
 
 ## Deployment 생성
 kubectl create deployment <Deplyment-Name> --image=<Container-Image>
-kubectl create deployment my-first-deployment --image=stacksimplify/kubenginx:1.0.0
+kubectl create deployment my-first-deployment --image=ghcr.io/edumgt/webrtc-signaling:sha-33e2aec
 
 ### docker pull ghcr.io/edumgt/webrtc-signaling:sha-33e2aec
+### docker pull ghcr.io/edumgt/webrtc-frontend:sha-33e2aec
 
 ## Deployment 확인
 kubectl get deployments
