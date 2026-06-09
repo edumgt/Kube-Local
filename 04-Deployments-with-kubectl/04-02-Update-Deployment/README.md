@@ -9,18 +9,22 @@
 
 ### Deployment 업데이트
 - **관찰 포인트:** `spec.template.spec.containers[].name` 값을 확인해 `kubectl set image`에 사용합니다.
-```
+
+```bash
 # 현재 Deployment의 컨테이너 이름 확인
 kubectl get deployment my-first-deployment -o yaml
 
-# Deployment 업데이트
-kubectl set image deployment/<Deployment-Name> <Container-Name>=<Container-Image> --record=true
-kubectl set image deployment/my-first-deployment kubenginx=stacksimplify/kubenginx:2.0.0 --record=true
+# Deployment 업데이트 (형식)
+kubectl set image deployment/<Deployment-Name> <Container-Name>=<Container-Image>
+
+# 실제 예시
+kubectl set image deployment/my-first-deployment webrtc-signaling=ghcr.io/edumgt/webrtc-frontend:sha-33e2aec
 ```
 
 ### 롤아웃 상태 확인
 - **관찰 포인트:** 기본적으로 롤링 업데이트이므로 다운타임 없이 배포됩니다.
-```
+
+```bash
 # 롤아웃 상태 확인
 kubectl rollout status deployment/my-first-deployment
 
@@ -28,30 +32,43 @@ kubectl rollout status deployment/my-first-deployment
 kubectl get deploy
 ```
 
+**출력 예시:**
+```
+deployment "my-first-deployment" successfully rolled out
+```
+
+- **Deployment**: Pod의 원하는 개수와 버전을 유지하도록 관리하는 Kubernetes 오브젝트
+- **Rollout**: 기존 Pod를 종료하고 새로운 Pod를 생성하면서 서비스 중단 없이 업데이트하는 과정
+- **successfully rolled out**: 모든 Pod가 Ready 상태로 전환되어 배포가 정상 완료되었음을 의미
+
 ### Deployment 상세 확인
 - **관찰 포인트:** 이벤트(Event)에서 롤링 업데이트가 진행되는지 확인합니다.
-```
+
+```bash
 # Deployment 상세 확인
 kubectl describe deployment my-first-deployment
 ```
 
 ### ReplicaSet 확인
 - **관찰 포인트:** 새 버전의 ReplicaSet이 생성됩니다.
-```
+
+```bash
 # ReplicaSet 확인
 kubectl get rs
 ```
 
 ### Pod 확인
 - **관찰 포인트:** 새 ReplicaSet의 해시 라벨을 가진 Pod가 생성됩니다.
-```
+
+```bash
 # Pod 목록 확인
 kubectl get po
 ```
 
 ### 롤아웃 히스토리 확인
 - **관찰 포인트:** 롤백 시 필요한 revision 정보가 기록됩니다.
-```
+
+```bash
 # Deployment 롤아웃 히스토리 확인
 kubectl rollout history deployment/<Deployment-Name>
 kubectl rollout history deployment/my-first-deployment
@@ -59,35 +76,41 @@ kubectl rollout history deployment/my-first-deployment
 
 ### 애플리케이션 접근
 - 브라우저에서 `Application Version:V2`가 표시되는지 확인합니다.
-```
+
+```bash
 # NodePort 확인
 kubectl get svc
-Observation: 3으로 시작하는 포트(예: 80:3xxxx/TCP)를 확인하세요.
+# Observation: 3으로 시작하는 포트(예: 80:3xxxx/TCP)를 확인하세요.
 
-# 워커 노드 Public IP 확인
+# 워커 노드 IP 확인
 kubectl get nodes -o wide
-Observation: AWS EKS 환경에서는 EXTERNAL-IP를 확인하세요.
+# Observation: EXTERNAL-IP 또는 INTERNAL-IP를 확인하세요.
+```
 
-# 애플리케이션 URL
-http://<worker-node-public-ip>:<Node-Port>
+접속 URL:
+```
+http://<worker-node-ip>:<Node-Port>
 ```
 
 ## Step-02: "edit"로 V2 -> V3 업데이트
 
 ### Deployment 편집
-```
+
+```bash
 # Deployment 편집
-kubectl edit deployment/<Deployment-Name> --record=true
-kubectl edit deployment/my-first-deployment --record=true
+kubectl edit deployment/<Deployment-Name>
+kubectl edit deployment/my-first-deployment
 ```
 
-```yml
-# 변경 전 2.0.0
+에디터에서 이미지 태그를 수정합니다:
+
+```yaml
+# 변경 전
     spec:
       containers:
       - image: stacksimplify/kubenginx:2.0.0
 
-# 변경 후 3.0.0
+# 변경 후
     spec:
       containers:
       - image: stacksimplify/kubenginx:3.0.0
@@ -95,21 +118,24 @@ kubectl edit deployment/my-first-deployment --record=true
 
 ### 롤아웃 상태 확인
 - **관찰 포인트:** 롤링 업데이트로 다운타임 없이 배포됩니다.
-```
+
+```bash
 # 롤아웃 상태 확인
 kubectl rollout status deployment/my-first-deployment
 ```
 
 ### ReplicaSet 확인
 - **관찰 포인트:** 버전별 ReplicaSet이 추가되어 3개가 보일 수 있습니다.
-```
+
+```bash
 # ReplicaSet/Pod 확인
 kubectl get rs
 kubectl get po
 ```
 
 ### 롤아웃 히스토리 확인
-```
+
+```bash
 # Deployment 롤아웃 히스토리 확인
 kubectl rollout history deployment/<Deployment-Name>
 kubectl rollout history deployment/my-first-deployment
@@ -117,20 +143,23 @@ kubectl rollout history deployment/my-first-deployment
 
 ### 애플리케이션 접근
 - 브라우저에서 `Application Version:V3`가 표시되는지 확인합니다.
-```
+
+```bash
 # NodePort 확인
 kubectl get svc
-Observation: 3으로 시작하는 포트(예: 80:3xxxx/TCP)를 확인하세요.
+# Observation: 3으로 시작하는 포트(예: 80:3xxxx/TCP)를 확인하세요.
 
-# 워커 노드 Public IP 확인
+# 워커 노드 IP 확인
 kubectl get nodes -o wide
-Observation: AWS EKS 환경에서는 EXTERNAL-IP를 확인하세요.
+# Observation: EXTERNAL-IP 또는 INTERNAL-IP를 확인하세요.
+```
 
-# 애플리케이션 URL
-http://<worker-node-public-ip>:<Node-Port>
+접속 URL:
+```
+http://<worker-node-ip>:<Node-Port>
 ```
 
 ## 추가 설명
-- `--record=true` 옵션은 변경 이력을 남겨 롤백 시 도움이 됩니다.
+- `--record=true` 옵션은 deprecated되어 향후 제거될 예정입니다. 변경 이력은 `kubectl annotate`로 대체합니다.
 - 실제 운영에서는 `kubectl apply -f`를 통한 선언형 업데이트가 더 안전합니다.
 - 업데이트 시 이미지 태그뿐 아니라 리소스 제한/환경 변수 변경도 함께 확인하는 것이 안전합니다.

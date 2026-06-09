@@ -99,9 +99,15 @@ http://<worker-node-public-ip>:<Node-Port>
 # 롤링 재시작
 kubectl rollout restart deployment/<Deployment-Name>
 kubectl rollout restart deployment/my-first-deployment
+```
 
+---
+
+#### 터미날 추가해서 보기
+
+```
 # Pod 목록 확인
-kubectl get po
+kubectl get pods -watch
 ```
 
 ## 추가 설명

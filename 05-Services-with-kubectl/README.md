@@ -1,308 +1,259 @@
 # Kubernetes - Service 다루기
 
 ## Step-01: Service 소개
+
 - **Service 유형**
   1. ClusterIP
   2. NodePort
   3. LoadBalancer
   4. ExternalName
-- 이 섹션에서는 ClusterIP와 NodePort를 자세히 다룹니다.
+- 이 섹션에서는 ClusterIP와 NodePort/Ingress를 함께 다룹니다.
 - LoadBalancer는 클라우드 제공자마다 동작이 달라, 해당 환경별 섹션에서 다룹니다.
 - ExternalName은 명령형 생성이 없어 YAML로 정의해야 하며, 필요 시 추가 설명합니다.
 
+---
+
 ## Step-02: ClusterIP Service - Backend 애플리케이션 구성
+
 - Backend(Spring Boot REST) Deployment 생성
-- Backend를 위한 ClusterIP Service 생성
-```
-# Backend REST 앱 Deployment 생성
-kubectl create deployment my-backend-rest-app --image=stacksimplify/kube-helloworld:1.0.0
-kubectl get deploy
+- Backend를 위한 ClusterIP Service 생성 (프론트엔드가 내부에서 접근용)
+- Backend를 외부(포트 8080)에 직접 노출하기 위해 `hostPort` 사용
 
-# Backend REST 앱 ClusterIP Service 생성
-kubectl expose deployment my-backend-rest-app --port=8080 --target-port=8080 --name=my-backend-service
-kubectl get svc
-Observation: 기본값이 ClusterIP이므로 --type=ClusterIp 옵션을 생략해도 됩니다.
-```
-- **중요:** 컨테이너 포트(8080)와 서비스 포트(8080)가 동일하면 `--target-port`는 생략 가능합니다.
+> **왜 NodePort를 안 쓰나?**  
+> Kubernetes NodePort의 기본 허용 범위는 30000-32767입니다.  
+> 포트 8080은 이 범위 밖이므로 `hostPort`를 사용해 노드에 직접 바인딩합니다.
 
-- **Backend HelloWorld 소스** [kube-helloworld](../../lecture01/00-Docker-Images/02-kube-backend-helloworld-springboot/kube-helloworld)
+### Backend Deployment + ClusterIP Service (`backend-deployment.yaml`)
 
-## Step-03: NodePort Service - Frontend 애플리케이션 구성
-- 기존에도 NodePort를 사용해봤지만, ClusterIP와 함께 전체 아키텍처 관점에서 다시 구성합니다.
-- Frontend(Nginx Reverse Proxy) Deployment 생성
-- Frontend를 위한 NodePort Service 생성
-- **중요:** Nginx reverse proxy 설정에서 backend 서비스 이름 `my-backend-service`가 정확해야 합니다.
-
-### Nginx 설정 예시
-```conf
-server {
-    listen       80;
-    server_name  localhost;
-    location / {
-    # Backend ClusterIP Service 이름과 포트 지정
-    # proxy_pass http://<Backend-ClusterIp-Service-Name>:<Port>;
-    proxy_pass http://my-backend-service:8080;
-    }
-    error_page   500 502 503 504  /50x.html;
-    location = /50x.html {
-        root   /usr/share/nginx/html;
-    }
-}
-```
-- **Docker 이미지 위치:** https://hub.docker.com/repository/docker/stacksimplify/kube-frontend-nginx
-- **Frontend 소스** [kube-frontend-nginx](../../lecture01/00-Docker-Images/03-kube-frontend-nginx)
-```
-# Frontend Nginx Proxy Deployment 생성
-kubectl create deployment my-frontend-nginx-app --image=stacksimplify/kube-frontend-nginx:1.0.0
-kubectl get deploy
-
-# Frontend Nginx Proxy NodePort Service 생성
-kubectl expose deployment my-frontend-nginx-app --type=NodePort --port=80 --target-port=80 --name=my-frontend-service
-kubectl get svc
-
-# 접근 정보 확인
-kubectl get svc
-kubectl get nodes -o wide
-http://<node1-public-ip>:<Node-Port>/hello
-
-# Backend를 10개로 스케일링
-kubectl scale --replicas=10 deployment/my-backend-rest-app
-
-# 다시 접근해 로드밸런싱 확인
-http://<node1-public-ip>:<Node-Port>/hello
-```
-
-## 추가 설명
-- ClusterIP는 내부 통신의 기본이며, 마이크로서비스 간 안정적인 서비스 디스커버리를 제공합니다.
-- NodePort는 고정 포트를 열기 때문에 보안 그룹/방화벽 규칙도 함께 확인해야 합니다.
-
-# Kubernetes Service: LoadBalancer / ExternalName 상세 정리
-
-아래 내용은 기존 Service 유형 소개(ClusterIP/NodePort/LoadBalancer/ExternalName) 중, **LoadBalancer**와 **ExternalName**을 실무 관점에서 조금 더 자세히 정리한 문서입니다.
-
----
-
-## 1) LoadBalancer Service (외부 트래픽을 “클라우드 LB”로 받아서 Service로 전달)
-
-### 핵심 개념
-- `type: LoadBalancer` 는 **클러스터 밖에서 들어오는 트래픽**을 “클라우드 제공자의 로드밸런서(ELB/NLB/ALB, Azure LB, GCP LB 등)”가 받아서
-- 그 트래픽을 **Kubernetes Service(대개 NodePort 경유)** 로 전달하는 방식입니다.
-- `kubectl get svc` 에서 **EXTERNAL-IP(또는 hostname)** 가 생기며, 이것이 외부 진입점이 됩니다.
-
-### 내부 동작 흐름(일반적인 형태)
-1. Service 생성(`type: LoadBalancer`)
-2. 클라우드 컨트롤러(또는 로드밸런서 컨트롤러)가 감지
-3. 클라우드에 LB 생성 + 헬스체크/리스너/타겟그룹(환경에 따라) 구성
-4. LB → (노드로) 전달 → kube-proxy가 Pod로 라우팅
-
-> 구현은 클라우드별로 다릅니다. 같은 “LoadBalancer”라도 **AWS/GCP/Azure/온프렘(MetalLB)/k3s**에서 “생성되는 LB의 종류, 헬스체크, 소스IP 보존, 비용/제약”이 달라질 수 있습니다.
-
-### 언제 쓰나?
-- Ingress 없이도 **단일 서비스를 바로 외부에 노출**해야 할 때 (예: 단독 API, 테스트용)
-- L4(TCP/UDP) 레벨로 외부 노출이 필요한 경우
-- 운영에서는 보통 **Ingress(HTTP/HTTPS) + LoadBalancer(ingress-controller 앞단)** 조합이 흔합니다.  
-  (즉 “앱마다 LoadBalancer”보다 “Ingress Controller 하나만 LoadBalancer”로 빼는 형태)
-
-### 실전에서 자주 보는 설정 포인트
-
-#### (1) `externalTrafficPolicy`
-- `Cluster`(기본): LB가 어떤 노드로 보내도 kube-proxy가 다른 노드의 Pod로 넘길 수 있음  
-  - 장점: 분산이 쉬움  
-  - 단점: **클라이언트 원본 IP가 보존되지 않을 수 있음(SNAT)**
-- `Local`: 트래픽을 받은 노드에 “로컬 Pod”이 있을 때만 전달  
-  - 장점: **원본 IP 보존 가능**, 불필요 홉 감소  
-  - 단점: 노드에 Pod이 없으면 드롭될 수 있어 **배포/스케일 전략**을 같이 봐야 함
-
-#### (2) 클라우드별 “LB 옵션”은 대부분 Annotation으로 제어
-- AWS면 NLB/ALB 타입, 내부용(internal), cross-zone, proxy-protocol 등
-- GCP/Azure도 내부/외부, 정적 IP, 헬스체크 방식 등  
-→ 따라서 LoadBalancer는 “Service YAML 하나”로 끝나지 않고 **환경별 annotation/컨트롤러**가 같이 따라옵니다.
-
-#### (3) 방화벽/보안그룹
-- NodePort와 달리 “외부로부터 들어오는 포트”는 LB 리스너 기준이지만,
-- 헬스체크/노드 타겟 포트 등으로 인해 **노드 쪽 보안그룹도 같이 열어야 하는 케이스**가 생깁니다(환경에 따라).
-
-### 예시 YAML
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-frontend-lb
-spec:
-  type: LoadBalancer
-  selector:
-    app: my-frontend-nginx-app
-  ports:
-    - name: http
-      port: 80        # 외부에서 접속할 포트(서비스 포트)
-      targetPort: 80  # Pod 컨테이너 포트
-  externalTrafficPolicy: Cluster
-```
-
-> 온프렘/로컬(k3s, kind, bare metal)에서는 “클라우드 LB가 없으니” `EXTERNAL-IP`가 안 뜨는 게 정상입니다.  
-> 이때는 **MetalLB**(bare metal)나 **k3s의 servicelb(klipper-lb)** 같은 구성요소가 있어야 “LoadBalancer가 동작”합니다.
-
-### kubeadm + VMware 실습에서 MetalLB 붙이기
-
-`kubeadm` 기반 VM 실습에서는 클라우드 LB가 없으므로, `type: LoadBalancer` Service를 실제로 외부 IP로 노출하려면 MetalLB가 필요합니다.
-
-#### (1) MetalLB 설치
-```bash
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.15.3/config/manifests/metallb-native.yaml
-kubectl get pods -n metallb-system
-```
-
-#### (2) IPAddressPool / L2Advertisement 구성
-- 아래 예시는 내부망 NIC가 `ens33`, 내부망 대역이 `192.168.111.0/24` 인 경우입니다.
-- DHCP와 충돌하지 않도록 **여유 IP 대역**을 사용해야 합니다.
-
-```yaml
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: lab-pool
-  namespace: metallb-system
-spec:
-  addresses:
-  - 192.168.111.240-192.168.111.250
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: lab-l2
-  namespace: metallb-system
-spec:
-  ipAddressPools:
-  - lab-pool
-  interfaces:
-  - ens33
-  nodeSelectors:
-  - matchLabels:
-      kubernetes.io/hostname: cp1
-```
-
-```bash
-kubectl apply -f metallb-pool.yaml
-kubectl get ipaddresspools,l2advertisements -n metallb-system
-```
-
-#### (3) control-plane 노드 라벨 주의
-- `kubeadm` control-plane 노드에는 아래 라벨이 붙어 있을 수 있습니다.
-- 이 라벨이 있으면 MetalLB가 외부 LB 광고 노드에서 제외할 수 있습니다.
-
-```bash
-kubectl get node cp1 --show-labels
-kubectl label node cp1 node.kubernetes.io/exclude-from-external-load-balancers-
-```
-
-#### (4) LoadBalancer Service 예시
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
+  name: my-backend-rest-app
   labels:
-    app: nginx
-    tier: web
+    app: my-backend-rest-app
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
-      app: nginx
+      app: my-backend-rest-app
   template:
     metadata:
       labels:
-        app: nginx
-        tier: web
+        app: my-backend-rest-app
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: w1      # w1 노드(192.168.253.148)에 고정 배치
+      containers:
+      - name: kube-helloworld
+        image: stacksimplify/kube-helloworld:1.0.0
+        ports:
+        - containerPort: 8080
+          hostPort: 8080                # 노드 포트 8080에 직접 바인딩
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-backend-service
+  labels:
+    app: my-backend-rest-app
+spec:
+  type: ClusterIP
+  selector:
+    app: my-backend-rest-app
+  ports:
+  - port: 8080
+    targetPort: 8080
+```
+
+```bash
+kubectl apply -f backend-deployment.yaml
+kubectl get pods -o wide
+# Observation: my-backend-rest-app Pod가 w1 노드에 배치되는지 확인
+
+kubectl get svc my-backend-service
+# Observation: ClusterIP 타입, 8080 포트 확인
+```
+
+**접속 URL (직접):**
+```
+http://192.168.253.148:8080/hello
+```
+
+---
+
+## Step-03: Ingress - Frontend 애플리케이션 구성
+
+- Frontend(Nginx Reverse Proxy) Deployment 생성
+- Frontend를 위한 ClusterIP Service 생성
+- Traefik Ingress를 통해 포트 80(외부)으로 노출
+
+> **왜 Ingress를 쓰나?**  
+> k3s에 Traefik이 이미 포트 80을 점유하고 있습니다.  
+> NodePort로 80을 열 수 없으므로, Traefik Ingress 리소스를 생성해 라우팅합니다.
+
+### Nginx 설정 (이미지 내장)
+
+Frontend 이미지(`stacksimplify/kube-frontend-nginx:1.0.0`)는 아래 nginx 설정으로 모든 요청을 백엔드 ClusterIP 서비스로 프록시합니다.
+
+```nginx
+server {
+    listen       80;
+    server_name  localhost;
+    location / {
+        proxy_pass http://my-backend-service:8080;
+    }
+}
+```
+
+### Frontend Deployment + ClusterIP Service + Ingress (`frontend-deployment.yaml`)
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-frontend-nginx-app
+  labels:
+    app: my-frontend-nginx-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-frontend-nginx-app
+  template:
+    metadata:
+      labels:
+        app: my-frontend-nginx-app
     spec:
       containers:
-      - name: nginx
-        image: nginx:1.27-alpine
+      - name: kube-frontend-nginx
+        image: stacksimplify/kube-frontend-nginx:1.0.0
         ports:
         - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-lb
+  name: my-frontend-service
+  labels:
+    app: my-frontend-nginx-app
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
-    app: nginx
+    app: my-frontend-nginx-app
   ports:
   - port: 80
     targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-frontend-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-frontend-service
+            port:
+              number: 80
 ```
 
 ```bash
-kubectl apply -f nginx-lb.yaml
-kubectl get svc nginx-lb
-kubectl describe svc nginx-lb
+kubectl apply -f frontend-deployment.yaml
+kubectl get pods -o wide
+kubectl get svc my-frontend-service
+kubectl get ingress my-frontend-ingress
+# Observation: ADDRESS 컬럼에 192.168.253.148, 192.168.253.149 확인
 ```
 
-정상이라면 `EXTERNAL-IP` 에 `192.168.111.240` 같은 VIP가 할당됩니다.
-
-#### (5) 실제 접속 URL
-- MetalLB LoadBalancer: `http://<EXTERNAL-IP>`
-- 예: `http://192.168.111.240`
-- Windows `hosts` 파일을 쓰고 싶다면:
-
-```text
-192.168.111.240 nginx-lb.local
+**접속 URL (Traefik → Nginx → Backend 프록시):**
+```
+http://192.168.253.149/hello
+http://192.168.253.148/hello
 ```
 
-브라우저 접속:
-
-```text
-http://nginx-lb.local/
-```
-
-#### (6) 빠른 문제 진단
-```bash
-kubectl get svc -A
-kubectl describe svc nginx-lb
-kubectl get pods -n metallb-system -o wide
-kubectl logs -n metallb-system -l component=speaker --tail=200
-```
-
-- `EXTERNAL-IP` 가 `<pending>` 이면: MetalLB 설정 또는 pool 미적용 가능성
-- `IPAllocated` 는 보이는데 접속이 안 되면: `L2Advertisement`, 인터페이스(`ens33`), control-plane 제외 라벨을 우선 확인
-- 임시 우회가 필요하면 `NodePort` 로도 접근 가능
+> **참고:** `/`(루트) 경로는 백엔드에 핸들러가 없어 404를 반환합니다. `/hello`로 접근해야 합니다.
 
 ---
 
-## 2) ExternalName Service (K8s Service를 “외부 DNS 이름(CNAME)”으로 매핑)
+## 전체 트래픽 흐름
 
-### 핵심 개념
-- `type: ExternalName` 은 **프록시/로드밸런싱을 하지 않습니다.**
-- 대신, 클러스터 DNS(CoreDNS)가  
-  `my-external-svc.default.svc.cluster.local` 같은 이름을 조회하면
-  **외부 도메인으로 CNAME 응답**을 돌려주는 “DNS 별칭 서비스”입니다.
+```
+[외부 브라우저]
+    │
+    ├─ http://192.168.253.148:8080/hello
+    │       └─> w1 hostPort:8080 → Backend Pod (Spring Boot) → "Hello World V1"
+    │
+    └─ http://192.168.253.149/hello
+            └─> Traefik (port 80) → Ingress → Frontend Service
+                    └─> Nginx Pod → ClusterIP:8080 → Backend Pod → "Hello World V1"
+```
 
-즉,
-- ClusterIP/NodePort/LoadBalancer처럼 **selector로 Pod을 고르거나**
-- kube-proxy가 트래픽을 **Pod로 라우팅**하지 않습니다.
+---
 
-### 언제 쓰나?
-- 마이크로서비스 코드/설정에서 “접속 대상”을 바꾸기 어렵거나,
-- 내부 서비스처럼 보이게 하되 실제로는 외부 시스템(관리형 DB, 외부 API, 레거시 서버 등)으로 보내고 싶을 때
-- 환경별(DEV/PROD)로 외부 endpoint만 바꿔야 할 때  
-  → 앱 설정은 `http://some-service`로 고정하고, ExternalName의 `externalName:`만 환경별로 바꾸는 식
+## Step-04: 스케일링 및 로드밸런싱 확인
 
-### 중요한 제약/주의사항
-1. **포트/프로토콜 라우팅 기능 없음**
-   - DNS만 바꿔줄 뿐이라 “80으로 들어오면 8080으로 보내줘” 같은 건 못합니다.
-   - 앱이 `externalName`으로 받은 호스트에 대해 **직접 포트까지 포함해서** 호출해야 합니다.
+```bash
+# Backend를 10개로 스케일링
+kubectl scale --replicas=10 deployment/my-backend-rest-app
 
-2. **IP를 직접 넣을 수 없음**
-   - `externalName`에는 보통 **DNS 이름**이 들어갑니다(CNAME).
-   - “외부 IP로 보내고 싶다”면 ExternalName이 아니라 다른 방법(EndpointSlice/Headless 등)을 고려합니다.
+kubectl get pods -o wide
+# Observation: Pod들이 여러 노드에 분산 배치되는지 확인
+# (단, hostPort 사용 시 동일 노드에 하나만 배치 가능 → 스케일링 시 nodeSelector 제거 권장)
+```
 
-3. **kube-proxy/LB/세션/헬스체크 같은 기능 없음**
-   - “쿠버네티스가 외부 엔드포인트를 로드밸런싱”해주지 않습니다.
-   - 그냥 DNS alias이기 때문에, 로드밸런싱이 필요하면 **외부에서 LB를 제공**해야 합니다.
+스케일링 후 반복 접속하면 Pod 이름이 바뀌는 것으로 로드밸런싱을 확인할 수 있습니다:
+```
+Hello World  V1 <pod-hash>
+```
 
-### 예시 YAML
+---
+
+## Step-05: 리소스 정리
+
+```bash
+kubectl delete -f backend-deployment.yaml
+kubectl delete -f frontend-deployment.yaml
+
+kubectl get all
+# Observation: service/kubernetes만 남아 있으면 정상
+```
+
+---
+
+## 추가 설명
+
+- `hostPort`는 해당 노드에 Pod가 하나만 배치될 수 있어 스케일아웃이 제한됩니다. 운영에서는 NodePort 범위를 조정하거나 Ingress를 활용하는 것이 좋습니다.
+- `ClusterIP`는 내부 통신의 기본이며, 마이크로서비스 간 안정적인 서비스 디스커버리를 제공합니다.
+- `Ingress`는 단일 진입점(Traefik)에서 여러 서비스로 라우팅할 수 있어 NodePort보다 유연합니다.
+
+---
+
+## 참고: LoadBalancer / ExternalName
+
+### LoadBalancer Service
+
+- `type: LoadBalancer`는 클러스터 밖에서 들어오는 트래픽을 클라우드 LB(ELB/NLB 등)가 받아 Service로 전달합니다.
+- k3s 환경에서는 Traefik이 `type: LoadBalancer`로 동작하며 `EXTERNAL-IP`가 자동 할당됩니다.
+- 온프렘/베어메탈에서는 **MetalLB** 같은 구성요소가 필요합니다.
+
+**언제 쓰나?**
+- Ingress 없이 단일 서비스를 바로 외부에 노출할 때
+- L4(TCP/UDP) 레벨로 외부 노출이 필요한 경우
+
+**주요 설정 포인트:**
+- `externalTrafficPolicy: Cluster` (기본) — 분산 쉽지만 클라이언트 원본 IP 미보존
+- `externalTrafficPolicy: Local` — 원본 IP 보존, 단 해당 노드에 Pod 없으면 드롭
+
+### ExternalName Service
+
+- `type: ExternalName`은 프록시/로드밸런싱 없이 CoreDNS가 CNAME 응답을 반환하는 "DNS 별칭 서비스"입니다.
+- 클러스터 내부 서비스 이름으로 외부 시스템(DB, API 등)을 가리킬 때 사용합니다.
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -313,16 +264,19 @@ spec:
   externalName: api.example.com
 ```
 
-Pod 내부에서 아래처럼 호출하면:
-- `http://my-external-api` → DNS가 `api.example.com`으로 CNAME 해석 → 외부로 나감
-
-> (실무 팁) **TLS 인증서 SNI/Host 헤더**가 중요한 외부 API라면,  
-> ExternalName으로 별칭을 주는 것이 오히려 문제를 만들 수도 있습니다(요청 Host가 무엇인지, 인증서 도메인이 무엇인지).
+**주의:**
+- 포트 변환 기능 없음 — 앱이 직접 포트까지 포함해 호출해야 합니다.
+- `externalName`에는 IP가 아닌 DNS 이름을 사용해야 합니다.
 
 ---
 
 ## 정리: 언제 무엇을 쓰나?
-- **ClusterIP**: 클러스터 내부 통신 기본 (서비스 디스커버리 + 로드밸런싱)
-- **NodePort**: 노드 포트를 고정 오픈해서 외부 진입(간단하지만 보안/운영 부담)
-- **LoadBalancer**: “외부 LB를 공식 진입점”으로(클라우드/온프렘 구성에 따라 구현 상이)
-- **ExternalName**: “K8s 서비스 이름 → 외부 DNS” 별칭(DNS만, 프록시/라우팅 없음)
+
+| 유형 | 용도 |
+|---|---|
+| **ClusterIP** | 클러스터 내부 통신 기본 (서비스 디스커버리 + 로드밸런싱) |
+| **NodePort** | 노드 포트(30000-32767)를 고정 오픈해서 외부 진입 |
+| **hostPort** | NodePort 범위 밖의 포트를 노드에 직접 바인딩 (스케일 제한 있음) |
+| **LoadBalancer** | 클라우드/MetalLB LB를 공식 진입점으로 사용 |
+| **Ingress** | 단일 LB(Traefik 등)에서 HTTP 경로 기반 라우팅 |
+| **ExternalName** | K8s 서비스 이름 → 외부 DNS 별칭 (DNS만, 프록시 없음) |
