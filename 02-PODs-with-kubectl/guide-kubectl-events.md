@@ -1,7 +1,5 @@
 # kubectl 이벤트 / Node·Pod 상태 수집 명령 정리
 
-
-
 # 전체 네임스페이스 이벤트(최신순 정렬)
 kubectl get events -A --sort-by=.lastTimestamp
 
@@ -144,7 +142,6 @@ kubectl get --raw /apis/events.k8s.io/v1/events | head
 
 이것도 전부 **내 클러스터의 API 서버(6443)**로 가는 요청이에요.
 
----
 
 ### 한 줄 결론
 #### events.k8s.io/v1은 외부 k8s.io에 접속한다는 뜻이 아니라, 내 클러스터 API 서버 안에 있는 “events.k8s.io”라는 API 그룹을 쓴다는 의미
@@ -157,70 +154,11 @@ kubectl describe node cp1
 ---
 ```
 kubectl describe pod -n <ns> <pod>
-kubectl describe pod -n default whoami-b85fc56b4-75gbn
-```
----
-```
-ubuntu@cp1:~$ kubectl describe pod -n default whoami-b85fc56b4-75gbn
-Name:             whoami-b85fc56b4-75gbn
-Namespace:        default
-Priority:         0
-Service Account:  default
-Node:             cp1/192.168.56.10
-Start Time:       Thu, 22 Jan 2026 07:12:38 +0000
-Labels:           app=whoami
-                  pod-template-hash=b85fc56b4
-Annotations:      <none>
-Status:           Running
-IP:               10.42.0.14
-IPs:
-  IP:           10.42.0.14
-Controlled By:  ReplicaSet/whoami-b85fc56b4
-Containers:
-  whoami:
-    Container ID:   containerd://034709103eb5a68e607543fa4088f5e890966b73b5455dd6b5e68e4436bd8c7b
-    Image:          traefik/whoami
-    Image ID:       docker.io/traefik/whoami@sha256:200689790a0a0ea48ca45992e0450bc26ccab5307375b41c84dfc4f2475937ab
-    Port:           <none>
-    Host Port:      <none>
-    State:          Running
-      Started:      Thu, 22 Jan 2026 07:12:47 +0000
-    Ready:          True
-    Restart Count:  0
-    Environment:    <none>
-    Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-4gzrj (ro)
-Conditions:
-  Type                        Status
-  PodReadyToStartContainers   True
-  Initialized                 True
-  Ready                       True
-  ContainersReady             True
-  PodScheduled                True
-Volumes:
-  kube-api-access-4gzrj:
-    Type:                    Projected (a volume that contains injected data from multiple sources)
-    TokenExpirationSeconds:  3607
-    ConfigMapName:           kube-root-ca.crt
-    Optional:                false
-    DownwardAPI:             true
-QoS Class:                   BestEffort
-Node-Selectors:              <none>
-Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
-                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
-Events:
-  Type    Reason     Age   From               Message
-  ----    ------     ----  ----               -------
-  Normal  Scheduled  55m   default-scheduler  Successfully assigned default/whoami-b85fc56b4-75gbn to cp1
-  Normal  Pulling    55m   kubelet            Pulling image "traefik/whoami"
-  Normal  Pulled     55m   kubelet            Successfully pulled image "traefik/whoami" in 7.008s (7.008s including waiting). Image size: 3039655 bytes.
-  Normal  Created    55m   kubelet            Created container: whoami
-  Normal  Started    55m   kubelet            Started container whoami
+kubectl describe pod -n default nginx-546c745d79-ksl8h
 ```
 
----
 ```
-kubectl logs -n <ns> <pod> --tail=300
+kubectl logs -n default traefik-9bcdbbd9-2t2zg --tail=300
 kubectl logs -n <ns> <pod> --previous --tail=300
 ```
 
@@ -387,8 +325,9 @@ text## 4. 실무에서 자주 비교되는 추가 항목
 ## 2) “taints 설정(특정 Pod 배치 제한)” 설명 (노드 쪽)
 ### 노드에 taint 추가
 ```bash
-kubectl taint nodes <node-name> dedicated=teamA:NoSchedule
+kubectl taint nodes w1 dedicated=teamA:NoSchedule
 ```
+
 의미:
 - `<node-name>` 노드에 `dedicated=teamA` 라는 taint를 붙이고,
 - `NoSchedule`이므로 **toleration 없는 Pod는 이 노드에 새로 배치 불가**
@@ -402,6 +341,19 @@ kubectl taint nodes <node-name> dedicated=teamA:NoSchedule-
 ```bash
 kubectl describe node <node-name> | grep -A3 Taints
 ```
+
+```bash
+kubectl run rejected-pod2 --image=nginx --restart=Never \
+  --overrides='{"spec":{"nodeSelector":{"kubernetes.io/hostname":"w1"}}}'
+
+kubectl taint node controller-node dedicated=teamA:NoSchedule
+kubectl run rejected-pod3 --image=nginx --restart=Never
+kubectl get pod rejected-pod3
+kubectl describe pod rejected-pod3 | grep -A10 "Events:"
+
+```
+
+
 
 ---
 

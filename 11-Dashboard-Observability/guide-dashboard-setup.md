@@ -64,6 +64,7 @@ kubectl get ingress
 
 ```text
 192.168.56.10  whoami.local
+192.168.253.148 whoami2.local
 ```
 
 브라우저: <http://whoami.local/>
