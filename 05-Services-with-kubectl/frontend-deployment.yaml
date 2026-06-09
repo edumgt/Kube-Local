@@ -5,7 +5,7 @@ metadata:
   labels:
     app: my-frontend-nginx-app
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: my-frontend-nginx-app
@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
       - name: kube-frontend-nginx
-        image: stacksimplify/kube-frontend-nginx:1.0.0
+        image: 172.29.41.131:5000/kube-frontend-nginx:1.0.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
 ---

@@ -5,7 +5,12 @@ metadata:
   labels:
     app: my-backend-rest-app
 spec:
-  replicas: 1
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: my-backend-rest-app
@@ -14,14 +19,12 @@ spec:
       labels:
         app: my-backend-rest-app
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: w1
       containers:
       - name: kube-helloworld
-        image: stacksimplify/kube-helloworld:1.0.0
+        image: 172.29.41.131:5000/kube-helloworld:1.0.0
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
-          hostPort: 8080
 ---
 apiVersion: v1
 kind: Service
