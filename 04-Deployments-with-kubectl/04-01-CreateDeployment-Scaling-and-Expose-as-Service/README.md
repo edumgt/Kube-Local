@@ -12,12 +12,14 @@
 - Deployment를 생성해 ReplicaSet을 롤아웃합니다.
 - Deployment, ReplicaSet, Pod를 확인합니다.
 - **Docker 이미지 위치:** https://hub.docker.com/repository/docker/stacksimplify/kubenginx
-```
-# Deployment 생성
+
+## Deployment 생성
 kubectl create deployment <Deplyment-Name> --image=<Container-Image>
 kubectl create deployment my-first-deployment --image=stacksimplify/kubenginx:1.0.0
 
-# Deployment 확인
+### docker pull ghcr.io/edumgt/webrtc-signaling:sha-33e2aec
+
+## Deployment 확인
 kubectl get deployments
 kubectl get deploy
 
