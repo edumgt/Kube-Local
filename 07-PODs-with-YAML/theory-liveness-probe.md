@@ -322,3 +322,12 @@ import os
 import time
 
 app = FastAPI()
+```
+
+
+---
+
+```sh
+docker tag webrtc-app-frontend:latest 192.168.253.148:5000/webrtc-app-frontend:latest
+docker push 192.168.253.148:5000/webrtc-app-frontend:latest
+```
