@@ -1,23 +1,30 @@
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: myapp2-rs  
+  name: myapp2-rs
 spec:
-  replicas: 3
+  replicas: 2          # HPA가 관리하므로 초기값을 낮게 설정
   selector:
     matchLabels:
       app: myapp2
-  template: 
-    metadata: # Dictionary
+  template:
+    metadata:
       name: myapp2-pod
-      labels: # Dictionary 
-        app: myapp2         
+      labels:
+        app: myapp2
     spec:
-      containers: # List
+      containers:
         - name: myapp2-container
-          image: stacksimplify/kubenginx:2.0.0
+          image: 192.168.253.148:5000/fastapi-health:1.0
           ports:
-            - containerPort: 80
+            - containerPort: 8080
+          resources:         # HPA 동작에 필수 - CPU 사용률 계산 기준
+            requests:
+              cpu: "100m"    # 0.1 vCPU 요청
+              memory: "64Mi"
+            limits:
+              cpu: "500m"    # 최대 0.5 vCPU
+              memory: "128Mi"
 
 
     

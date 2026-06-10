@@ -117,6 +117,30 @@ kubectl get ns lecture            # lecture 네임스페이스
 - 각 폴더의 `README.md`에 강의 목표·이론·실습 명령어가 통합되어 있습니다
 - `kube-manifests/` 하위 폴더에 YAML 실습 파일이 포함되어 있습니다
 
+```mermaid
+flowchart LR
+    A([00\nDocker Images]) --> B([01\nK8s Architecture])
+    B --> C([02\nPods\nkubectl])
+    C --> D([03\nReplicaSets\nkubectl])
+    D --> E([04\nDeployments\nkubectl])
+    E --> F([05\nServices\nkubectl])
+    F --> G([06\nYAML Basics])
+
+    G --> H([07\nPods YAML])
+    H --> I([08\nReplicaSets\nYAML])
+    I --> J([09\nDeployments\nYAML])
+    J --> K([10\nServices\nYAML])
+
+    K --> L([11\nDashboard\nObservability])
+    L --> M([12\nHPA\nAutoScaling])
+    M --> N([13\nNetwork\nIngress])
+    N --> O([14\nCheatsheets])
+
+    style A fill:#2d6a4f,color:#fff
+    style G fill:#1d3557,color:#fff
+    style O fill:#9b2226,color:#fff
+```
+
 ## 강의 구성
 
 | 폴더 | 주제 |
@@ -173,6 +197,53 @@ kubectl get ns lecture            # lecture 네임스페이스
 | 격리 | 높음(OS 단위) | 중간(프로세스 단위) | 컨테이너 격리 기반 | 표준 자체는 실행 주체 아님 | Pod/Namespace 기반 |
 | 자원 효율 | 낮음 | 높음 | 높음 | N/A | 높음 |
 | 주요 목적 | 레거시/강격리 | 경량 앱 실행 | 빌드/배포 편의 | 호환성 | 대규모 운영 자동화 |
+
+## Kubernetes 클러스터 아키텍처
+
+```mermaid
+flowchart TD
+    DEV([kubectl\n개발자 로컬]) -->|HTTPS :6443| API
+
+    subgraph CP["Control Plane Node (controller-node)"]
+        API[kube-apiserver]
+        SCH[kube-scheduler]
+        CM[kube-controller-manager]
+        ETCD[(etcd\n상태 저장소)]
+        KBL_CP[kubelet]
+        CT_CP[containerd]
+
+        API <-->|읽기/쓰기| ETCD
+        API --> SCH
+        API --> CM
+        KBL_CP -->|상태 보고| API
+        KBL_CP --> CT_CP
+    end
+
+    subgraph W1["Worker Node (w1)"]
+        KBL_W[kubelet]
+        KP_W[kube-proxy]
+        CT_W[containerd]
+        REG[(Python Registry\n:5000)]
+
+        KBL_W -->|상태 보고| API
+        KBL_W --> CT_W
+        CT_W -->|이미지 pull| REG
+    end
+
+    subgraph PODS_CP["Pods - controller-node"]
+        P1[fastapi-good]
+    end
+
+    subgraph PODS_W["Pods - w1"]
+        P2[fastapi-bad]
+        P3[fastapi-slow]
+    end
+
+    CT_CP --> PODS_CP
+    CT_W --> PODS_W
+    SCH -->|노드 배치 결정| KBL_CP
+    SCH -->|노드 배치 결정| KBL_W
+```
 
 ## Kubelet 정리
 - kubelet은 각 노드의 에이전트로서 Pod를 실제 실행/유지
@@ -280,7 +351,38 @@ kubectl get ns lecture
 
 실제 데브옵스 환경에서는 두 기술이 다음과 같은 흐름으로 함께 연결되어 사용됩니다.
 
-1. **Code Commit:** 개발자가 코드를 작성하여 저장소(Git)에 올립니다.
-2. **Build (DinD 사용):** Jenkins 같은 CI 도구가 컨테이너 환경 안에서 **DinD** 방식을 이용하여 소스코드를 도커 이미지로 빌드합니다.
-3. **Push & Store (Harbor 사용):** 빌드가 완료된 신뢰할 수 있는 도커 이미지를 사내 **Harbor** 레지스트리로 전송(Push)하여 안전하게 보관합니다.
-4. **Deploy:** 운영 서버(Kubernetes 등)에서 Harbor에 보관된 이미지를 다운로드(Pull)하여 서비스를 배포합니다.
+```mermaid
+flowchart TD
+    DEV([Developer]) -->|git commit / push| GIT[Git Repository\nGitHub / GitLab]
+
+    GIT -->|Webhook 트리거| CI
+
+    subgraph CI_ENV["CI Agent Container (DinD)"]
+        CI[Jenkins / GitLab CI\nRunner Container]
+        CI -->|docker build| IMG[Docker Image 빌드]
+        IMG -->|docker run tests| TEST[컨테이너 단위 테스트]
+    end
+
+    TEST -->|docker push| HARBOR
+
+    subgraph HARBOR_ENV["Harbor - Private Registry"]
+        HARBOR[(Harbor\n이미지 저장소)]
+        HARBOR --> SCAN[취약점 스캔\nTrivy / Clair]
+        HARBOR --> SIGN[이미지 서명\nContent Trust]
+        HARBOR --> REPL[레플리케이션\n다중 Region 동기화]
+    end
+
+    SIGN -->|검증 완료| DEPLOY
+
+    subgraph K8S["Kubernetes Cluster"]
+        DEPLOY[kubectl apply\n/ Helm / ArgoCD]
+        DEPLOY -->|이미지 pull| NODE1[Worker Node 1\ncontainerd]
+        DEPLOY -->|이미지 pull| NODE2[Worker Node 2\ncontainerd]
+        NODE1 --> POD1([Running Pod])
+        NODE2 --> POD2([Running Pod])
+    end
+
+    style CI_ENV fill:#1d3557,color:#fff
+    style HARBOR_ENV fill:#2d6a4f,color:#fff
+    style K8S fill:#3d1a4e,color:#fff
+```

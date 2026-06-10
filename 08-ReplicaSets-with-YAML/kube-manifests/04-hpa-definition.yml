@@ -1,0 +1,31 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp2-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: ReplicaSet
+    name: myapp2-rs
+  minReplicas: 2     # 평상시 최소 Pod 수
+  maxReplicas: 10    # 공격/과부하 시 최대 Pod 수
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50   # CPU 50% 초과 시 스케일 아웃
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 15   # 스케일 아웃 반응 속도 (빠르게)
+      policies:
+        - type: Pods
+          value: 3
+          periodSeconds: 15            # 15초마다 최대 3개 Pod 추가
+    scaleDown:
+      stabilizationWindowSeconds: 60   # 스케일 인은 60초 안정화 후
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30            # 30초마다 최대 2개 Pod 제거
