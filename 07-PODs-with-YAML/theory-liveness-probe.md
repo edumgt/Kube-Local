@@ -324,7 +324,6 @@ import time
 app = FastAPI()
 ```
 
-
 ---
 
 ```sh

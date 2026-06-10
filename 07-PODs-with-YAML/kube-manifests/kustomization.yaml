@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - 04-namespace.yml
-  - 05-fastapi-pod-bad.yml
-  - 06-fastapi-pod-good.yml
-  - 07-fastapi-pod-slow.yml
-  - 08-fastapi-svc.yml
