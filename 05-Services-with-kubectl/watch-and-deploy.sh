@@ -3,6 +3,7 @@
 REGISTRY="localhost:5000"
 BE_SRC="/home/ubuntu/kubernetes-lab/00-Docker-Images/02-kube-backend-helloworld-springboot/kube-helloworld"
 FE_SRC="/home/ubuntu/kubernetes-lab/00-Docker-Images/03-kube-frontend-nginx/V1-Release"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 deploy_be() {
   echo "[BE] 변경 감지 → 빌드 시작"
@@ -13,6 +14,11 @@ deploy_be() {
   echo "[BE] 배포 완료"
 }
 
+take_screenshot() {
+  echo "[screenshot] FE 화면 캡처 시작..."
+  cd "${SCRIPT_DIR}" && node screenshot.js
+}
+
 deploy_fe() {
   echo "[FE] 변경 감지 → 빌드 시작"
   docker build -t "${REGISTRY}/kube-frontend-nginx:1.0.0" "${FE_SRC}" && \
@@ -20,6 +26,7 @@ deploy_fe() {
   kubectl rollout restart deployment/my-frontend-nginx-app && \
   kubectl rollout status deployment/my-frontend-nginx-app
   echo "[FE] 배포 완료"
+  take_screenshot
 }
 
 echo "감시 시작..."

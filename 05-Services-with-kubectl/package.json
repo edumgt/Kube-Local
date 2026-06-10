@@ -1,0 +1,12 @@
+{
+  "name": "fe-screenshot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "screenshot": "node screenshot.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.48.0",
+    "playwright": "^1.48.0"
+  }
+}

@@ -14,7 +14,7 @@ public class HelloWorldController {
 	
 	@GetMapping(path = "/hello")
 	public String helloWorld() {
-		return "Hello World " + " V1 " + serverInfo.getServerInfo();
+		return "test test " + " V2 " + serverInfo.getServerInfo();
 	}
 
 }

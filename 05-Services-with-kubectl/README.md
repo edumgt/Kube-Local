@@ -280,3 +280,43 @@ spec:
 | **LoadBalancer** | 클라우드/MetalLB LB를 공식 진입점으로 사용 |
 | **Ingress** | 단일 LB(Traefik 등)에서 HTTP 경로 기반 라우팅 |
 | **ExternalName** | K8s 서비스 이름 → 외부 DNS 별칭 (DNS만, 프록시 없음) |
+
+---
+
+# inotifywait 리눅스 명령어
+
+## 개요
+**`inotifywait`**는 리눅스에서 사용하는 명령어로, **inotify-tools** 패키지에 포함되어 있습니다.  
+파일 시스템 이벤트(예: 파일 생성, 삭제, 수정, 접근 등)를 실시간으로 감시할 수 있습니다.
+
+## 주요 특징
+- **[inotifywait](ca://s?q=inotifywait_리눅스_명령어)**는 지정한 파일이나 디렉터리에 대해 이벤트가 발생할 때까지 대기합니다.
+- 스크립트에서 파일 변경을 감지하고 자동으로 작업을 실행할 때 자주 사용됩니다.
+- 이벤트 종류를 지정할 수 있으며, 무한 루프 형태로 계속 감시할 수도 있습니다.
+
+## 사용 예시
+```bash
+# test.txt 파일의 변경 이벤트를 감시
+inotifywait -m test.txt
+
+
+---
+
+# Playwright
+
+## 개요
+**Playwright**는 Microsoft가 만든 오픈소스 웹 자동화 및 테스트 프레임워크입니다.  
+최신 브라우저(Chromium, Firefox, WebKit)를 하나의 API로 제어할 수 있으며, 다양한 언어를 지원합니다.
+
+## 주요 특징
+- **[멀티 브라우저 지원](ca://s?q=Playwright_브라우저_지원)**: Chromium, Firefox, WebKit
+- **[다양한 언어](ca://s?q=Playwright_지원_언어)**: TypeScript, Python, .NET, Java
+- **자동 대기(Auto-wait)**: 안정적인 테스트 실행
+- **테스트 격리**: 각 테스트마다 새로운 브라우저 컨텍스트 생성
+- **병렬 실행 및 샤딩**: CI/CD 환경에서 대규모 테스트 지원
+- **접근성 기반 셀렉터**: `getByRole`, `getByLabel` 등
+
+## 설치 방법
+```bash
+# Node.js 환경에서 설치
+npm install -D @playwright/test

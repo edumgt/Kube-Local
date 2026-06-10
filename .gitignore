@@ -3,3 +3,5 @@ aws
 .codex
 .claude/
 **/target
+
+**/node_*
