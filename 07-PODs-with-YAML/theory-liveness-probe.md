@@ -127,6 +127,8 @@ readinessProbe:
 1) Pod 이벤트에서 Unhealthy / probe 메시지 확인
 ```bash
 kubectl -n <ns> describe pod <pod> | egrep -n "Unhealthy|Liveness|Readiness|Startup|probe"
+kubectl -n default describe pod my-backend-rest-app-588459ddc5-czwp5 | egrep -n "Unhealthy|Liveness|Readiness|Startup|probe"
+
 ```
 
 2) 컨테이너 재시작 횟수/상태 확인
@@ -138,6 +140,7 @@ kubectl -n <ns> get pod <pod> -o jsonpath='{.status.containerStatuses[0].restart
 3) (가능하면) 컨테이너 직전 로그 확인
 ```bash
 kubectl -n <ns> logs <pod> --previous
+kubectl -n default logs my-backend-rest-app-588459ddc5-r8vgf --previous
 ```
 
 ---
@@ -150,8 +153,6 @@ kubectl -n <ns> logs <pod> --previous
   `livenessProbe`는 가볍고 보수적으로,  
   `readinessProbe`는 트래픽 수용 여부에 맞추는 것이 안정적입니다.
 
----
----
 
 
 # livenessProbe 실패로 재시작되는 이유 (CrashLoopBackOff와의 관계) + FastAPI 실습 (Python)

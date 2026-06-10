@@ -1,0 +1,24 @@
+# [실패 재현] livenessProbe가 틀린 포트(9999)를 찌름 → CrashLoopBackOff
+# FastAPI는 8080 포트로 기동하지만, probe는 9999를 체크 → 항상 connection refused
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fastapi-bad
+  namespace: demo
+  labels:
+    app: fastapi-bad
+spec:
+  restartPolicy: Always
+  containers:
+    - name: app
+      image: kimdypm/fastapi-health:1.0
+      ports:
+        - containerPort: 8080
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 9999          # ← 틀린 포트: 앱은 8080인데 9999를 찌름
+        initialDelaySeconds: 3
+        periodSeconds: 5
+        timeoutSeconds: 1
+        failureThreshold: 2   # 2번 실패하면 바로 kill

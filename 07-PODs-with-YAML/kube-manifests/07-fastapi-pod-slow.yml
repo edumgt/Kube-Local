@@ -1,0 +1,41 @@
+# [심화] 느린 기동(30초) 재현 + startupProbe로 보호
+# SLOW_START=1 env가 설정되면 main.py startup_hook에서 STARTUP_SLEEP초 대기
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fastapi-slow
+  namespace: demo
+  labels:
+    app: fastapi-slow
+spec:
+  restartPolicy: Always
+  containers:
+    - name: app
+      image: kimdypm/fastapi-health:1.0
+      env:
+        - name: SLOW_START
+          value: "1"
+        - name: STARTUP_SLEEP
+          value: "30"
+      ports:
+        - containerPort: 8080
+      startupProbe:          # 기동 중에는 여기만 체크 (liveness/readiness 비활성)
+        httpGet:
+          path: /healthz
+          port: 8080
+        periodSeconds: 2
+        failureThreshold: 20  # 최대 2s × 20 = 40초 기동 허용
+      livenessProbe:         # startupProbe 통과 후 활성화
+        httpGet:
+          path: /healthz
+          port: 8080
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: 8080
+        periodSeconds: 5
+        timeoutSeconds: 2
+        failureThreshold: 3

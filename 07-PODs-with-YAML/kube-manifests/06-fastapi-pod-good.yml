@@ -1,0 +1,31 @@
+# [해결 1] livenessProbe 포트를 실제 앱 포트(8080)로 수정 + readinessProbe 추가
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fastapi-good
+  namespace: demo
+  labels:
+    app: fastapi-good
+spec:
+  restartPolicy: Always
+  containers:
+    - name: app
+      image: kimdypm/fastapi-health:1.0
+      ports:
+        - containerPort: 8080
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 8080          # ← 정상 포트
+        initialDelaySeconds: 3
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 3
+      readinessProbe:
+        httpGet:
+          path: /ready
+          port: 8080
+        initialDelaySeconds: 3
+        periodSeconds: 5
+        timeoutSeconds: 2
+        failureThreshold: 3
