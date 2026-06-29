@@ -1,8 +1,6 @@
 # Kubernetes-Class-Master
 
-### todo
-Serving, Triton, KServe는 모두 AI 모델을 개발한 이후, 이를 실제 서비스(웹, 앱 등)에 배포하고 운영하기 위한 Model Serving(모델 서빙) 생태계의 핵심 개념이자 도구들입니다.
-각각의 관계를 쉽게 정리하면 "개념(Serving) ➡️ 핵심 엔진(Triton) ➡️ 이를 아우르는 거대한 관리 인프라(KServe)"라고 볼 수 있습니다.
+
 
 ---
 
@@ -380,4 +378,243 @@ flowchart TD
     style CI_ENV fill:#1d3557,color:#fff
     style HARBOR_ENV fill:#2d6a4f,color:#fff
     style K8S fill:#3d1a4e,color:#fff
+```
+
+---
+
+# Model Serving · Triton · KServe 개념 정리
+
+AI 모델 개발 이후 실제 서비스(웹, 앱 등)에 배포하고 운영하기 위한 **Model Serving(모델 서빙)** 생태계의 핵심 개념 및 도구 정리입니다.
+
+> **한 줄 관계 요약**: 개념(Serving) ➡️ 핵심 엔진(Triton) ➡️ 이를 아우르는 거대한 관리 인프라(KServe)
+
+---
+
+## 1. Model Serving (모델 서빙) — 개념
+
+> **"학습이 끝난 AI 모델을 외부 요청에 응답할 수 있도록 API 형태로 지속 실행하는 것"**
+
+머신러닝 모델은 학습(Training)이 끝나면 `.pt`, `.onnx`, `.savedmodel` 등의 파일로 저장됩니다.  
+이 파일 자체는 그냥 숫자 덩어리일 뿐이며, 실제 앱에서 사용하려면 **HTTP/gRPC 엔드포인트로 요청을 받고 추론(Inference) 결과를 반환하는 서버**가 필요합니다. 이 역할 전체를 **Model Serving**이라고 부릅니다.
+
+### 모델 서빙이 단순 API 서버와 다른 이유
+
+| 일반 API 서버 | 모델 서빙 서버 |
+| :--- | :--- |
+| CPU 연산 위주 | GPU/NPU 가속 필수 |
+| 요청당 독립 처리 | 배치(Batch) 처리로 GPU 활용률 극대화 |
+| 코드 배포 단위 | 모델 파일(Artifact) 버전 단위 배포 |
+| 단순 스케일아웃 | GPU 할당·공유·메모리 관리 필요 |
+| 단일 포맷 | 프레임워크별 모델 포맷 혼재 (PyTorch, TF, ONNX…) |
+
+### 서빙의 핵심 과제
+
+* **지연(Latency)**: 사용자 요청에 ms 단위로 응답해야 함
+* **처리량(Throughput)**: 동시 다중 요청을 GPU 낭비 없이 처리
+* **모델 버전 관리**: A/B 테스트, 카나리 배포, 롤백
+* **멀티 프레임워크**: PyTorch·TensorFlow·ONNX·TensorRT를 단일 서버에서 지원
+* **관측성(Observability)**: 추론 지연·GPU 사용률·오류율 모니터링
+
+---
+
+## 2. Triton Inference Server — 핵심 엔진
+
+> **"NVIDIA가 만든 고성능 오픈소스 추론(Inference) 서버 엔진"**
+
+Triton은 모델 서빙의 핵심 실행 엔진입니다. 여러 딥러닝 프레임워크의 모델을 단일 서버에서 동시에 서빙하고, GPU 자원을 최대한 활용하도록 설계된 NVIDIA의 오픈소스 프로젝트입니다.
+
+### 주요 기능
+
+* **멀티 프레임워크 지원**: PyTorch(TorchScript), TensorFlow SavedModel, ONNX, TensorRT, OpenVINO, Python 커스텀 백엔드 등
+* **동적 배칭(Dynamic Batching)**: 지연 허용 범위 내에서 여러 요청을 묶어 GPU 활용률을 높임
+* **모델 앙상블(Model Ensemble)**: 전처리→추론→후처리 파이프라인을 단일 요청으로 묶음
+* **동시 모델 실행(Concurrent Execution)**: 하나의 GPU에서 여러 모델 인스턴스를 병렬 실행
+* **프로토콜**: HTTP REST / gRPC 동시 지원 (KServe v2 Inference Protocol 준수)
+* **모델 레포지토리**: 로컬 파일시스템, S3, GCS, Azure Blob 등 다양한 스토리지에서 모델 로드
+
+### Triton 모델 레포지토리 구조
+
+```
+model_repository/
+├── resnet50/              # 모델 이름
+│   ├── config.pbtxt       # 입력/출력 텐서, 배칭 설정
+│   ├── 1/                 # 버전 1
+│   │   └── model.onnx
+│   └── 2/                 # 버전 2
+│       └── model.onnx
+└── bert_classifier/
+    ├── config.pbtxt
+    └── 1/
+        └── model.pt
+```
+
+### Triton 배포 예시 (Docker)
+
+```bash
+# NVIDIA GPU가 있는 환경에서 Triton 서버 실행
+docker run --gpus all --rm \
+  -p 8000:8000 \   # HTTP
+  -p 8001:8001 \   # gRPC
+  -p 8002:8002 \   # Metrics (Prometheus)
+  -v $(pwd)/model_repository:/models \
+  nvcr.io/nvidia/tritonserver:24.01-py3 \
+  tritonserver --model-repository=/models
+
+# 추론 요청
+curl -X POST http://localhost:8000/v2/models/resnet50/infer \
+  -H "Content-Type: application/json" \
+  -d '{"inputs": [{"name": "input", "shape": [1,3,224,224], "datatype": "FP32", "data": [...]}]}'
+```
+
+---
+
+## 3. KServe — 관리 인프라
+
+> **"Kubernetes 위에서 모델 서빙 전체 라이프사이클을 자동화하는 MLOps 플랫폼"**
+
+KServe(구 KFServing)는 Kubernetes의 CRD(Custom Resource Definition)를 활용해 **모델 배포·버전 관리·오토스케일링·트래픽 분할·모니터링**을 선언형으로 관리합니다. 내부적으로 Triton, TorchServe, TFServing 등 다양한 서빙 엔진을 추상화하여 사용합니다.
+
+### 핵심 구성요소
+
+| 컴포넌트 | 역할 |
+| :--- | :--- |
+| **InferenceService** | 모델 서빙의 핵심 CRD — 모델 경로·서빙 엔진·스케일링 정책 선언 |
+| **Predictor** | 실제 추론을 수행하는 컨테이너 (Triton, TorchServe, TFServing 등) |
+| **Transformer** | 추론 전/후 전처리·후처리 담당 사이드카 |
+| **Explainer** | 모델 예측 결과에 대한 설명 가능성(XAI) 제공 |
+| **Knative Serving** | 요청 기반 오토스케일링 (0→N, Scale-to-Zero 포함) |
+| **Istio / Gateway** | 트래픽 라우팅·카나리 배포·A/B 테스트 |
+
+### InferenceService YAML 예시 (Triton 백엔드)
+
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: resnet50-triton
+  namespace: mlserving
+spec:
+  predictor:
+    triton:
+      storageUri: s3://my-model-bucket/resnet50/   # 모델 위치
+      runtimeVersion: "24.01-py3"
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: 8Gi
+        requests:
+          cpu: "2"
+          memory: 4Gi
+  transformer:
+    containers:
+      - name: preprocessor
+        image: my-registry/resnet50-transformer:v1
+```
+
+```bash
+# 배포 후 상태 확인
+kubectl get inferenceservice resnet50-triton -n mlserving
+
+# 추론 요청 (KServe가 자동 생성한 엔드포인트)
+curl -X POST \
+  http://resnet50-triton.mlserving.svc.cluster.local/v2/models/resnet50/infer \
+  -H "Content-Type: application/json" \
+  -d @input.json
+```
+
+---
+
+## 4. 세 개념의 관계 및 전체 아키텍처
+
+```mermaid
+flowchart TD
+    DEV([Data Scientist\n모델 학습 완료]) -->|모델 파일 업로드\n.pt / .onnx / .savedmodel| STORE
+
+    subgraph STORE["Model Storage (S3 / GCS / NFS)"]
+        M1[(resnet50\nv1 / v2)]
+        M2[(bert-classifier\nv1)]
+    end
+
+    STORE -->|storageUri 참조| KSERVE
+
+    subgraph KSERVE["KServe — 관리 인프라 (K8s CRD)"]
+        IS[InferenceService\nresnet50-triton]
+        TF[Transformer\n전처리 / 후처리]
+        EX[Explainer\nXAI]
+        IS --> TF
+        IS --> EX
+    end
+
+    subgraph TRITON["Triton Inference Server — 핵심 엔진"]
+        LM[모델 로드\nONNX / TorchScript / TensorRT]
+        DB[Dynamic Batching\n배치 최적화]
+        CM[Concurrent Model\n동시 실행]
+        LM --> DB --> CM
+    end
+
+    KSERVE -->|Predictor로\nTriton Pod 배포| TRITON
+
+    subgraph SCALE["오토스케일링 (Knative)"]
+        direction LR
+        S0([Scale-to-Zero]) -->|트래픽 유입| S1([Pod 1])
+        S1 -->|부하 증가| S2([Pod 2])
+        S2 -->|부하 증가| S3([Pod N])
+    end
+
+    TRITON --> SCALE
+
+    subgraph TRAFFIC["트래픽 관리 (Istio / Gateway)"]
+        AB[A/B Test\nv1 50% / v2 50%]
+        CAN[Canary\nv2 10% → 100%]
+    end
+
+    SCALE --> TRAFFIC
+
+    USER([Web / App\n서비스]) -->|HTTP REST\ngRPC| TRAFFIC
+
+    subgraph OBS["관측성 (Observability)"]
+        PROM[Prometheus\n지연 / 처리량 / GPU]
+        GRAF[Grafana\n대시보드]
+        PROM --> GRAF
+    end
+
+    TRITON -->|/metrics| PROM
+
+    style STORE fill:#4a4e69,color:#fff
+    style KSERVE fill:#3d1a4e,color:#fff
+    style TRITON fill:#1d3557,color:#fff
+    style SCALE fill:#2d6a4f,color:#fff
+    style TRAFFIC fill:#9b2226,color:#fff
+    style OBS fill:#5c4033,color:#fff
+```
+
+---
+
+## 5. Serving · Triton · KServe 한눈에 비교
+
+| 구분 | Model Serving | Triton Inference Server | KServe |
+| :--- | :--- | :--- | :--- |
+| **성격** | 개념 / 목표 | 실행 엔진 (소프트웨어) | 관리 플랫폼 (K8s 기반) |
+| **만든 곳** | — | NVIDIA | Linux Foundation (KF) |
+| **역할** | 모델을 API로 제공하는 모든 행위 | 고성능 GPU 추론 서버 | 서빙 전체 라이프사이클 자동화 |
+| **주요 기능** | 추론 API, 버전 관리, 스케일링 | 멀티 프레임워크, 동적 배칭, 앙상블 | CRD 선언, 오토스케일링, A/B 테스트 |
+| **비유** | "택배 서비스" 개념 자체 | 초고속 배송 트럭 (실행 주체) | 트럭·노선·물류창고를 통합 관리하는 물류 센터 |
+| **없으면** | 목표가 없음 | 직접 Flask/FastAPI로 GPU 코드 짜야 함 | 수동으로 Deployment·HPA·Ingress 설정해야 함 |
+
+---
+
+## 6. 실무 선택 기준
+
+```
+단순 PoC / 소규모
+  └─ FastAPI + PyTorch → 직접 컨테이너로 서빙
+
+GPU 최적화가 중요한 프로덕션
+  └─ Triton Inference Server 단독 배포
+
+K8s 기반 MLOps 플랫폼 구축
+  └─ KServe (내부 엔진으로 Triton 사용)
+       ├─ Scale-to-Zero로 비용 절감
+       ├─ 모델 버전 A/B 테스트
+       └─ Prometheus + Grafana 관측성 통합
 ```
