@@ -1,13 +1,8 @@
 # Kubernetes-Class-Master
 
-## 실습 환경 선택
-
-이 저장소의 기본 실습 환경은 **VMware**이며, VirtualBox/Codespaces는 대안으로 사용할 수 있습니다.
-
-| 환경 | 폴더 / 방법 | 권장 사양 |
-|------|------------|-----------|
-| **VMware** (로컬 VM, 권장) | [`vmware/`](./vmware/) | RAM 8GB+, 4코어+ |
-| GitHub Codespaces (클라우드, 대안) | 이 저장소 → Code → Codespaces | 4 CPU / 16GB (자동 구성) |
+### todo
+Serving, Triton, KServe는 모두 AI 모델을 개발한 이후, 이를 실제 서비스(웹, 앱 등)에 배포하고 운영하기 위한 Model Serving(모델 서빙) 생태계의 핵심 개념이자 도구들입니다.
+각각의 관계를 쉽게 정리하면 "개념(Serving) ➡️ 핵심 엔진(Triton) ➡️ 이를 아우르는 거대한 관리 인프라(KServe)"라고 볼 수 있습니다.
 
 ---
 
